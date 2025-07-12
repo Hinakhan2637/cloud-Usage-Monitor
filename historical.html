@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Cloud Usage Historical Trends</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      background-color: #0f172a;
+      color: #f8fafc;
+      padding: 20px;
+    }
+
+    nav {
+      background: #1e293b;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    nav a {
+      color: #38bdf8;
+      text-decoration: none;
+      font-weight: bold;
+      font-size: 16px;
+    }
+
+    h2 {
+      text-align: center;
+      color: #38bdf8;
+      margin-bottom: 30px;
+    }
+
+    .filter-section {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 30px;
+      flex-wrap: wrap;
+    }
+
+    select, input[type="date"], button {
+      padding: 10px 14px;
+      border-radius: 6px;
+      border: none;
+      background-color: #1e293b;
+      color: #f8fafc;
+    }
+
+    button:hover {
+      background-color: #38bdf8;
+      color: #0f172a;
+      cursor: pointer;
+    }
+
+    canvas, #map {
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 20px;
+      max-width: 100%;
+      border: 2px solid #334155;
+      margin-bottom: 30px;
+    }
+
+    .export-btn {
+      margin-top: 20px;
+      display: flex;
+      justify-content: center;
+    }
+
+    #map {
+      height: 400px;
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="index.html">← Back to Dashboard</a>
+    <a href="history.html">Historical Trends</a>
+  </nav>
+
+  <h2>📈 Historical Usage Trends</h2>
+
+  <div class="filter-section">
+    <label for="start">From:</label>
+    <input type="date" id="start" />
+    <label for="end">To:</label>
+    <input type="date" id="end" />
+    <button onclick="generateReport()">Generate</button>
+  </div>
+
+  <canvas id="trendChart" height="100"></canvas>
+
+  <div class="export-btn">
+    <button onclick="exportChart()">📤 Export Chart</button>
+  </div>
+
+  <h2>🌍 Regional Usage Breakdown</h2>
+  <div id="map"></div>
+
+  <script>
+    const ctx = document.getElementById('trendChart').getContext('2d');
+    let trendChart;
+
+    function generateMockData(days) {
+      const data = [];
+      for (let i = 0; i < days; i++) {
+        data.push(Math.floor(Math.random() * 100));
+      }
+      return data;
+    }
+
+    function generateReport() {
+      const startDate = new Date(document.getElementById('start').value);
+      const endDate = new Date(document.getElementById('end').value);
+      if (isNaN(startDate) || isNaN(endDate) || startDate > endDate) {
+        alert("Please select a valid date range.");
+        return;
+      }
+      const diffDays = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+      const labels = Array.from({ length: diffDays }, (_, i) => `Day ${i + 1}`);
+
+      const datasets = ['CPU', 'Memory', 'Storage'].map(resource => {
+        return {
+          label: `${resource} Usage (%)`,
+          data: generateMockData(diffDays),
+          fill: true,
+          tension: 0.3,
+          borderWidth: 2,
+          backgroundColor: resource === 'CPU' ? 'rgba(56,189,248,0.2)' : resource === 'Memory' ? 'rgba(34,197,94,0.2)' : 'rgba(234,179,8,0.2)',
+          borderColor: resource === 'CPU' ? '#38bdf8' : resource === 'Memory' ? '#22c55e' : '#eab308',
+          pointRadius: 4,
+          pointHoverRadius: 6
+        }
+      });
+
+      if (trendChart) trendChart.destroy();
+
+      trendChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: datasets
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: {
+              display: true,
+              text: `Usage Trends from ${startDate.toDateString()} to ${endDate.toDateString()}`,
+              color: '#f8fafc',
+              font: { size: 18 }
+            },
+            legend: {
+              labels: { color: '#f8fafc' }
+            },
+            tooltip: { mode: 'index', intersect: false }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              ticks: { color: '#f8fafc' },
+              grid: { color: '#334155' }
+            },
+            x: {
+              ticks: { color: '#f8fafc' },
+              grid: { color: '#334155' }
+            }
+          }
+        }
+      });
+    }
+
+    function exportChart() {
+      const link = document.createElement('a');
+      link.href = trendChart.toBase64Image();
+      link.download = 'Cloud_Usage_Trends.png';
+      link.click();
+    }
+
+    const map = L.map('map').setView([20, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    const regionData = [
+      { name: 'US', lat: 37.0902, lon: -95.7129, usage: 75 },
+      { name: 'Germany', lat: 51.1657, lon: 10.4515, usage: 62 },
+      { name: 'India', lat: 20.5937, lon: 78.9629, usage: 88 },
+      { name: 'Japan', lat: 36.2048, lon: 138.2529, usage: 54 },
+      { name: 'Brazil', lat: -14.2350, lon: -51.9253, usage: 69 }
+    ];
+
+    regionData.forEach(region => {
+      const marker = L.circleMarker([region.lat, region.lon], {
+        radius: 10,
+        fillColor: '#38bdf8',
+        color: '#0ea5e9',
+        weight: 1,
+        fillOpacity: 0.6
+      }).addTo(map);
+      marker.bindPopup(`<strong>${region.name}</strong><br>Usage: ${region.usage}%`);
+    });
+
+    window.onload = () => {
+      const today = new Date();
+      const past = new Date();
+      past.setDate(today.getDate() - 7);
+      document.getElementById('start').valueAsDate = past;
+      document.getElementById('end').valueAsDate = today;
+      generateReport();
+    }
+  </script>
+</body>
+</html>
